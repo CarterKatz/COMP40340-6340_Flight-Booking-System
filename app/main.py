@@ -10,6 +10,7 @@ from app.db import pool
 from app.holds import router as holds_router
 from app.bookings import router as bookings_router
 from app.admin import router as admin_router
+from app.search import router as search_router
 
 BOOT_ID = uuid.uuid4().hex
 EXPECTED_AUTH = f"Bearer {os.environ['API_KEY']}".encode()
@@ -27,6 +28,7 @@ install_error_handlers(app)
 app.include_router(holds_router)
 app.include_router(bookings_router)
 app.include_router(admin_router)
+app.include_router(search_router)
 
 
 @app.middleware("http")

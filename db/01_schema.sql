@@ -63,3 +63,6 @@ CREATE TABLE idempotency_keys (
     response_body    JSONB,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX flights_by_origin_date ON flights (origin, origin_local_date);
+CREATE INDEX flights_by_origin_departure ON flights (origin, scheduled_departure);
