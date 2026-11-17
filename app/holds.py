@@ -63,6 +63,21 @@ def load_legs(conn, itinerary_id: str) -> list[dict]:
 
 HOLD_SECONDS = 60
 
+def seat_counts(conn, flight_ids: list[str]) -> list[dict]:
+    return conn.execute(
+        """
+        SELECT f.flight_id, f.capacity, f.seats_sold,
+               COALESCE(SUM(h.passengers), 0)::int AS seats_held
+        FROM flights f
+        LEFT JOIN hold_legs hl ON hl.flight_id = f.flight_id
+        LEFT JOIN holds h ON h.hold_id = hl.hold_id
+                         AND h.status = 'active'
+                         AND h.expires_at > clock_timestamp()
+        WHERE f.flight_id = ANY(%s)
+        GROUP BY f.flight_id
+        """,
+        (flight_ids,),
+    ).fetchall()
 
 def iso_utc(moment) -> str:
     return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -80,24 +95,11 @@ def create_hold(body: HoldRequest):
             (flight_ids,),
         )
 
-        seats = conn.execute(
-            """
-            SELECT f.flight_id,
-                   f.capacity - f.seats_sold - COALESCE(SUM(h.passengers), 0) AS available
-            FROM flights f
-            LEFT JOIN hold_legs hl ON hl.flight_id = f.flight_id
-            LEFT JOIN holds h ON h.hold_id = hl.hold_id
-                             AND h.status = 'active'
-                             AND h.expires_at > clock_timestamp()
-            WHERE f.flight_id = ANY(%s)
-            GROUP BY f.flight_id
-            """,
-            (flight_ids,),
-        ).fetchall()
-        for row in seats:
-            if row["available"] < body.passengers:
+        for row in seat_counts(conn, flight_ids):
+            available = row["capacity"] - row["seats_sold"] - row["seats_held"]
+            if available < body.passengers:
                 raise ApiError(409, "sold_out",
-                               f"{row['flight_id']} has {row['available']} seats left")
+                            f"{row['flight_id']} has {available} seats left")
 
         price_cents = sum(leg["base_fare_cents"] for leg in legs)
         total_cents = price_cents * body.passengers

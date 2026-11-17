@@ -28,23 +28,19 @@ class BookingRequest(BaseModel):
     idempotency_key: str
 
 
-def load_booking(conn, booking_id: str) -> dict | None:
-    row = conn.execute(
-        """
-        SELECT b.booking_id, b.status, b.created_at,
-               h.itinerary_id, h.total_cents,
-               ARRAY(SELECT hl.flight_id FROM hold_legs hl
-                     WHERE hl.hold_id = b.hold_id ORDER BY hl.leg) AS flight_ids,
-               ARRAY(SELECT bp.name FROM booking_passengers bp
-                     WHERE bp.booking_id = b.booking_id ORDER BY bp.seq) AS names
-        FROM bookings b
-        JOIN holds h ON h.hold_id = b.hold_id
-        WHERE b.booking_id = %s
-        """,
-        (booking_id,),
-    ).fetchone()
-    if row is None:
-        return None
+BOOKING_SELECT = """
+    SELECT b.booking_id, b.status, b.created_at,
+           h.itinerary_id, h.total_cents,
+           ARRAY(SELECT hl.flight_id FROM hold_legs hl
+                 WHERE hl.hold_id = b.hold_id ORDER BY hl.leg) AS flight_ids,
+           ARRAY(SELECT bp.name FROM booking_passengers bp
+                 WHERE bp.booking_id = b.booking_id ORDER BY bp.seq) AS names
+    FROM bookings b
+    JOIN holds h ON h.hold_id = b.hold_id
+"""
+
+
+def booking_json(row: dict) -> dict:
     return {
         "booking_id": row["booking_id"],
         "status": row["status"],
@@ -54,6 +50,16 @@ def load_booking(conn, booking_id: str) -> dict | None:
         "total_cents": row["total_cents"],
         "created_at": iso_utc(row["created_at"]),
     }
+
+
+def load_booking(conn, booking_id: str) -> dict | None:
+    row = conn.execute(
+        BOOKING_SELECT + " WHERE b.booking_id = %s",
+        (booking_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    return booking_json(row)
 
 
 def failure(status_code: int, error: str, detail: str) -> tuple[int, dict]:
@@ -158,6 +164,7 @@ def create_booking(body: BookingRequest):
         )
 
     return JSONResponse(status_code=status_code, content=response_body)
+
 
 @router.get("/bookings/{booking_id}")
 def get_booking(booking_id: str):
