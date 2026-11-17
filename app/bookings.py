@@ -158,3 +158,60 @@ def create_booking(body: BookingRequest):
         )
 
     return JSONResponse(status_code=status_code, content=response_body)
+
+@router.get("/bookings/{booking_id}")
+def get_booking(booking_id: str):
+    with pool.connection() as conn:
+        booking = load_booking(conn, booking_id)
+    if booking is None:
+        raise ApiError(404, "unknown_booking", f"no booking {booking_id!r}")
+    return booking
+
+
+@router.delete("/bookings/{booking_id}")
+def cancel_booking(booking_id: str):
+    with pool.connection() as conn:
+        flight_ids = [
+            row["flight_id"]
+            for row in conn.execute(
+                """
+                SELECT hl.flight_id
+                FROM bookings b
+                JOIN hold_legs hl ON hl.hold_id = b.hold_id
+                WHERE b.booking_id = %s
+                """,
+                (booking_id,),
+            )
+        ]
+        if not flight_ids:
+            raise ApiError(404, "unknown_booking", f"no booking {booking_id!r}")
+
+        conn.execute(
+            "SELECT flight_id FROM flights WHERE flight_id = ANY(%s) "
+            "ORDER BY flight_id FOR UPDATE",
+            (flight_ids,),
+        )
+
+        booking = conn.execute(
+            """
+            SELECT b.status, h.passengers
+            FROM bookings b
+            JOIN holds h ON h.hold_id = b.hold_id
+            WHERE b.booking_id = %s
+            FOR UPDATE OF b
+            """,
+            (booking_id,),
+        ).fetchone()
+
+        if booking["status"] == "confirmed":
+            conn.execute(
+                "UPDATE bookings SET status = 'cancelled', cancelled_at = now() "
+                "WHERE booking_id = %s",
+                (booking_id,),
+            )
+            conn.execute(
+                "UPDATE flights SET seats_sold = seats_sold - %s WHERE flight_id = ANY(%s)",
+                (booking["passengers"], flight_ids),
+            )
+
+        return load_booking(conn, booking_id)
