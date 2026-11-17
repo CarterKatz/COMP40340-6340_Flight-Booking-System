@@ -1,3 +1,5 @@
+name: flight-booking
+
 services:
   db:
     image: postgres:17
@@ -7,6 +9,7 @@ services:
       POSTGRES_DB: airline
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U airline -d airline"]
       interval: 2s
