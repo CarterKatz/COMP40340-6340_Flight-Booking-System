@@ -17,7 +17,7 @@ docker compose up --build
 Check that it is running:
 
 ```
-curl http://localhost:8080/health
+curl.exe -H "Authorization: Bearer dev-key" http://localhost:8080/health
 ```
 
 ## Stop the airline
@@ -28,3 +28,13 @@ docker compose down
 
 Bookings are kept in a Docker volume and survive restarts. To wipe all
 data as well, run `docker compose down -v`.
+
+## Search implementation and verification
+
+The search endpoint uses PostgreSQL for route discovery, seat availability,
+ranking, and result selection. Read [the search design](docs/SEARCH_DESIGN.md)
+for the implementation walkthrough, ownership, and measured results.
+
+For isolated PostgreSQL tests and benchmark commands, see
+[search verification](tests/SEARCH.md). The API requirements are in
+[CONTRACT.md](CONTRACT.md). The test commands require `uv sync` first.

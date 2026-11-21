@@ -1,0 +1,17 @@
+name: flight-search-tests
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: search_test
+      POSTGRES_PASSWORD: search_test
+      POSTGRES_DB: search_test
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U search_test -d search_test"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
