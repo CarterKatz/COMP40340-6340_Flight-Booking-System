@@ -216,6 +216,16 @@ def test_authentication(airline, authorization):
     assert "Server-Timing" in response.headers
 
 
+def test_restart_endpoint_schedules_process_exit(airline, monkeypatch):
+    import app.admin
+
+    exit_codes = []
+    monkeypatch.setattr(app.admin.os, "_exit", exit_codes.append)
+    response = airline.client.post("/admin/restart")
+    assert response.status_code == 202
+    assert response.json() == {"status": "restarting"}
+
+
 def discovered(a, origin="BOI", destination="JFK", day=date(2027, 3, 15)):
     from app.search_routes import discover_routes
     with a.pool.connection() as conn:

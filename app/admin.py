@@ -1,4 +1,8 @@
+import asyncio
+import os
+
 from fastapi import APIRouter, Query
+from fastapi.responses import JSONResponse
 
 from app.bookings import BOOKING_SELECT, booking_json
 from app.db import pool
@@ -70,3 +74,9 @@ def reset():
         )
         conn.execute("UPDATE flights SET seats_sold = 0 WHERE seats_sold <> 0")
     return {"status": "reset"}
+
+
+@router.post("/restart")
+async def restart():
+    asyncio.get_running_loop().call_later(0.3, os._exit, 1)
+    return JSONResponse({"status": "restarting"}, status_code=202)
