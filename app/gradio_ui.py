@@ -1,7 +1,7 @@
 """A small Gradio client for an airline that implements the Flight Control API.
 
-Run the airline separately, then start this UI with:
-    uv run python -m examples.gradio_ui
+Run from the project root, with the airline running separately:
+    uv run python -m app.gradio_ui
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from flightcontrol import catalog
 
 API_URL = os.environ.get("FLIGHT_API_URL", "http://localhost:8080").rstrip("/")
 API_KEY = os.environ.get("FLIGHT_API_KEY", "dev-key")
-PAYMENT_TOKEN = "tok_ok_gradio_demo" 
+PAYMENT_TOKEN = "tok_ok_gradio_demo" # This is currently a placeholder, but this would serve as payment data
 AIRPORTS = [
     (f"{airport.city} ({airport.code})", airport.code)
     for airport in catalog.AIRPORT_BY_CODE.values()
