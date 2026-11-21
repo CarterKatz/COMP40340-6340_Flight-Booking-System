@@ -24,7 +24,10 @@ curl -H "Authorization: Bearer (DEV KEY HERE)" http://localhost:8080/health
 ```
 
 Bookings are kept in a Docker volume and survive restarts. To wipe all
-data as well, run `docker compose down -v`.
+data as well, run 
+```
+docker compose down -v
+```
 
 ## Optional UI experience
 
